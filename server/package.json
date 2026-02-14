@@ -1,0 +1,18 @@
+﻿{
+  "name": "azure-vm-dashboard-server",
+  "version": "1.0.0",
+  "description": "Backend API for Azure VM Automation Dashboard",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@azure/arm-compute": "^23.3.0",
+    "@azure/identity": "^4.13.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0"
+  }
+}
