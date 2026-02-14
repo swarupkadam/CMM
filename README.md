@@ -29,3 +29,10 @@ terminal2 - npm run dev
 to stop the project
 terminal1 - Ctrl + C
 terminal2 - Ctrl + C
+
+## For Github
+
+& 'C:\Program Files\Git\cmd\git.exe' git status
+& 'C:\Program Files\Git\cmd\git.exe' git add .
+& 'C:\Program Files\Git\cmd\git.exe' git commit -m "your message"
+& 'C:\Program Files\Git\cmd\git.exe' git push
