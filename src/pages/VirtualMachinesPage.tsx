@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "../components/shared/PageHeader";
 import { Card } from "../components/shared/Card";
 import { VMCard, type VMAction } from "../components/shared/VMCard";
+import { CreateEnvironmentModal } from "../components/shared/CreateEnvironmentModal";
+import { ToastContainer, type Toast } from "../components/shared/Toast";
 import type { VM } from "../types/vm";
 
 type FetchVmsOptions = {
@@ -21,6 +23,8 @@ const VirtualMachinesPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [vmActionLoading, setVmActionLoading] = useState<Record<string, VMAction | null>>({});
   const [vmActionError, setVmActionError] = useState<Record<string, string | null>>({});
+  const [isCreateEnvironmentOpen, setIsCreateEnvironmentOpen] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
   const pollIntervalIdsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const pollRequestInFlightRef = useRef<Record<string, boolean>>({});
@@ -31,6 +35,21 @@ const VirtualMachinesPage = () => {
 
   const setVmErrorState = useCallback((vmKey: string, value: string | null) => {
     setVmActionError((prev) => ({ ...prev, [vmKey]: value }));
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
+  const showSuccessToast = useCallback((title: string) => {
+    setToasts((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        title,
+        variant: "success",
+      },
+    ]);
   }, []);
 
   const fetchVms = useCallback(async (options: FetchVmsOptions = {}) => {
@@ -177,11 +196,25 @@ const VirtualMachinesPage = () => {
     };
   }, [clearVmPoll, fetchVms]);
 
+  const handleCreateEnvironmentSuccess = useCallback(async () => {
+    await fetchVms();
+    showSuccessToast("Dev environment created successfully.");
+  }, [fetchVms, showSuccessToast]);
+
   return (
     <div>
       <PageHeader
         title="Virtual Machines"
         subtitle="Manage VM status and view your Azure inventory in real time."
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsCreateEnvironmentOpen(true)}
+            className="rounded-xl border border-[#19beaa] bg-[#19beaa] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
+          >
+            Create Environment
+          </button>
+        }
       />
 
       {loading && <p className="text-sm text-slate-500">Loading virtual machines...</p>}
@@ -211,6 +244,14 @@ const VirtualMachinesPage = () => {
           )}
         </div>
       )}
+
+      <CreateEnvironmentModal
+        isOpen={isCreateEnvironmentOpen}
+        onClose={() => setIsCreateEnvironmentOpen(false)}
+        onSuccess={handleCreateEnvironmentSuccess}
+      />
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 };

@@ -60,8 +60,8 @@ const restoreUserFromStorage = (): User | null => {
     return null;
   }
 
-  const token = window.localStorage.getItem(STORAGE_TOKEN_KEY);
-  const serializedUser = window.localStorage.getItem(STORAGE_USER_KEY);
+  const token = window.sessionStorage.getItem(STORAGE_TOKEN_KEY);
+  const serializedUser = window.sessionStorage.getItem(STORAGE_USER_KEY);
 
   if (!token || !serializedUser) {
     return null;
@@ -106,8 +106,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setWarningVisible(false);
     setWarningCountdown(WARNING_COUNTDOWN_SECONDS);
     setUser(null);
-    window.localStorage.removeItem(STORAGE_USER_KEY);
-    window.localStorage.removeItem(STORAGE_TOKEN_KEY);
+    window.sessionStorage.removeItem(STORAGE_USER_KEY);
+    window.sessionStorage.removeItem(STORAGE_TOKEN_KEY);
   }, [clearInactivityTimers]);
 
   const startWarningCountdown = useCallback(() => {
@@ -147,8 +147,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const nextUser = { name: "Sabu Oommen", email };
     const token = createSessionToken();
 
-    window.localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
-    window.localStorage.setItem(STORAGE_TOKEN_KEY, token);
+    window.sessionStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
+    window.sessionStorage.setItem(STORAGE_TOKEN_KEY, token);
     setUser(nextUser);
   }, []);
 

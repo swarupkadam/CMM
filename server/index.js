@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { ClientSecretCredential } from "@azure/identity";
 import { ComputeManagementClient } from "@azure/arm-compute";
+import { NetworkManagementClient } from "@azure/arm-network";
 
 dotenv.config();
 
@@ -27,6 +28,11 @@ const credential = new ClientSecretCredential(
 );
 
 const computeClient = new ComputeManagementClient(
+  credential,
+  process.env.AZURE_SUBSCRIPTION_ID
+);
+
+const networkClient = new NetworkManagementClient(
   credential,
   process.env.AZURE_SUBSCRIPTION_ID
 );
@@ -77,6 +83,145 @@ function getVmInput(body = {}) {
   }
 
   return { valid: true, name, resourceGroup };
+}
+
+function getTemplateDevInput(body = {}) {
+  const projectName =
+    typeof body.projectName === "string" ? body.projectName.trim() : "";
+
+  if (!projectName) {
+    return {
+      valid: false,
+      error: "Field 'projectName' is required in request body."
+    };
+  }
+
+  return { valid: true, projectName };
+}
+
+function getDevTemplateConfig() {
+  const config = {
+    resourceGroup: process.env.AZURE_RESOURCE_GROUP,
+    location: process.env.AZURE_LOCATION,
+    vnetName: process.env.AZURE_VNET_NAME,
+    subnetName: process.env.AZURE_SUBNET_NAME,
+    adminUsername: process.env.VM_ADMIN_USERNAME,
+    adminPassword: process.env.VM_ADMIN_PASSWORD
+  };
+
+  const missing = Object.entries(config)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  return {
+    ...config,
+    missing,
+    hasMissing: missing.length > 0
+  };
+}
+
+function sanitizeProjectName(projectName) {
+  return projectName.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+function buildDevVmName(projectName) {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:TZ.]/g, "")
+    .slice(0, 14);
+  const sanitized = sanitizeProjectName(projectName) || "project";
+  const maxProjectLength = 45;
+  const trimmedProjectName = sanitized.slice(0, maxProjectLength);
+
+  return `dev-${trimmedProjectName}-${timestamp}`;
+}
+
+async function createDevTemplateVm(projectName) {
+  const config = getDevTemplateConfig();
+
+  if (config.hasMissing) {
+    const error = new Error(
+      `Missing required environment variables for template: ${config.missing.join(", ")}`
+    );
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const vmName = buildDevVmName(projectName);
+  const nicName = `${vmName}-nic`;
+
+  const tags = {
+    environment: "dev",
+    project: projectName,
+    owner: "internal-platform"
+  };
+
+  const subnet = await networkClient.subnets.get(
+    config.resourceGroup,
+    config.vnetName,
+    config.subnetName
+  );
+
+  if (!subnet.id) {
+    const error = new Error("Could not resolve subnet ID from configured VNet/subnet.");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const nic = await networkClient.networkInterfaces.beginCreateOrUpdateAndWait(
+    config.resourceGroup,
+    nicName,
+    {
+      location: config.location,
+      ipConfigurations: [
+        {
+          name: "ipconfig1",
+          subnet: { id: subnet.id },
+          privateIPAllocationMethod: "Dynamic"
+        }
+      ],
+      tags
+    }
+  );
+
+  if (!nic.id) {
+    const error = new Error("NIC creation succeeded but NIC ID was not returned.");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  await computeClient.virtualMachines.beginCreateOrUpdateAndWait(
+    config.resourceGroup,
+    vmName,
+    {
+      location: config.location,
+      hardwareProfile: {
+        vmSize: "Standard_B2ats_v2"
+      },
+      storageProfile: {
+        imageReference: {
+          publisher: "Canonical",
+          offer: "0001-com-ubuntu-server-jammy",
+          sku: "22_04-lts-gen2",
+          version: "latest"
+        }
+      },
+      osProfile: {
+        computerName: vmName,
+        adminUsername: config.adminUsername,
+        adminPassword: config.adminPassword,
+        linuxConfiguration: {
+          disablePasswordAuthentication: false
+        }
+      },
+      networkProfile: {
+        networkInterfaces: [{ id: nic.id, primary: true }]
+      },
+      tags
+    }
+  );
+
+  return { vmName };
 }
 
 app.get("/vms", async (_req, res) => {
@@ -176,6 +321,31 @@ app.post("/vm/stop", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to stop VM",
+      error: error.message
+    });
+  }
+});
+
+app.post("/template/dev", async (req, res) => {
+  const input = getTemplateDevInput(req.body);
+  if (!input.valid) {
+    return res.status(400).json({
+      success: false,
+      message: input.error
+    });
+  }
+
+  try {
+    const result = await createDevTemplateVm(input.projectName);
+    return res.json({
+      success: true,
+      vmName: result.vmName
+    });
+  } catch (error) {
+    console.error("Failed to create dev template VM:", error);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: "Failed to create dev template VM",
       error: error.message
     });
   }
