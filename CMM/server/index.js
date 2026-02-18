@@ -39,9 +39,21 @@ const networkClient = new NetworkManagementClient(
 
 const app = express();
 const PORT = 5000;
+const DEFAULT_VM_CACHE_TTL_MS = 15000;
+const parsedVmCacheTtl = Number(process.env.VM_CACHE_TTL_MS);
+const VM_CACHE_TTL_MS =
+  Number.isFinite(parsedVmCacheTtl) && parsedVmCacheTtl > 0
+    ? parsedVmCacheTtl
+    : DEFAULT_VM_CACHE_TTL_MS;
 
 app.use(cors());
 app.use(express.json());
+
+let vmCache = {
+  data: null,
+  expiresAt: 0
+};
+let vmCacheInFlightPromise = null;
 
 function extractResourceGroupFromId(resourceId) {
   if (!resourceId) return "Unknown";
@@ -224,38 +236,74 @@ async function createDevTemplateVm(projectName) {
   return { vmName };
 }
 
-app.get("/vms", async (_req, res) => {
-  try {
-    const vms = [];
+function invalidateVmCache() {
+  vmCache = {
+    data: null,
+    expiresAt: 0
+  };
+}
 
-    for await (const vm of computeClient.virtualMachines.listAll()) {
-      const resourceGroup = extractResourceGroupFromId(vm.id);
-      let powerState = "Unknown";
+function isVmCacheValid() {
+  return Array.isArray(vmCache.data) && vmCache.expiresAt > Date.now();
+}
 
-      if (vm.name && resourceGroup !== "Unknown") {
-        try {
-          const instanceView = await computeClient.virtualMachines.instanceView(
-            resourceGroup,
-            vm.name
-          );
-          powerState = formatPowerState(instanceView.statuses);
-        } catch (statusError) {
-          console.warn(`Could not fetch power state for VM ${vm.name}:`, statusError.message);
-        }
+async function fetchVmsFromAzure() {
+  const vms = [];
+
+  for await (const vm of computeClient.virtualMachines.listAll()) {
+    const resourceGroup = extractResourceGroupFromId(vm.id);
+    let powerState = "Unknown";
+
+    if (vm.name && resourceGroup !== "Unknown") {
+      try {
+        const instanceView = await computeClient.virtualMachines.instanceView(
+          resourceGroup,
+          vm.name
+        );
+        powerState = formatPowerState(instanceView.statuses);
+      } catch (statusError) {
+        console.warn(`Could not fetch power state for VM ${vm.name}:`, statusError.message);
       }
-
-      vms.push({
-        name: vm.name ?? "Unknown",
-        resourceGroup,
-        location: vm.location ?? "Unknown",
-        powerState
-      });
     }
 
-    res.json(vms);
+    vms.push({
+      name: vm.name ?? "Unknown",
+      resourceGroup,
+      location: vm.location ?? "Unknown",
+      powerState
+    });
+  }
+
+  return vms;
+}
+
+app.get("/vms", async (req, res) => {
+  const bypassCache = req.query.refresh === "true";
+
+  try {
+    if (!bypassCache && isVmCacheValid()) {
+      return res.json(vmCache.data);
+    }
+
+    if (!vmCacheInFlightPromise || bypassCache) {
+      vmCacheInFlightPromise = fetchVmsFromAzure()
+        .then((vms) => {
+          vmCache = {
+            data: vms,
+            expiresAt: Date.now() + VM_CACHE_TTL_MS
+          };
+          return vms;
+        })
+        .finally(() => {
+          vmCacheInFlightPromise = null;
+        });
+    }
+
+    const vms = await vmCacheInFlightPromise;
+    return res.json(vms);
   } catch (error) {
     console.error("Failed to fetch VMs:", error);
-    res.status(500).json({
+    return res.status(500).json({
       error: "Failed to fetch virtual machines",
       message: error.message
     });
@@ -276,6 +324,7 @@ app.post("/vm/start", async (req, res) => {
       input.resourceGroup,
       input.name
     );
+    invalidateVmCache();
 
     return res.json({
       success: true,
@@ -308,6 +357,7 @@ app.post("/vm/stop", async (req, res) => {
       input.resourceGroup,
       input.name
     );
+    invalidateVmCache();
 
     return res.json({
       success: true,
@@ -337,6 +387,7 @@ app.post("/template/dev", async (req, res) => {
 
   try {
     const result = await createDevTemplateVm(input.projectName);
+    invalidateVmCache();
     return res.json({
       success: true,
       vmName: result.vmName
