@@ -115,3 +115,34 @@ export const VMCard = ({ vm, onAction, loadingAction = null, actionError = null 
     </Card>
   );
 };
+
+export const VMSkeletonCard = () => {
+  return (
+    <Card>
+      <div className="animate-pulse">
+        <div className="flex items-start justify-between gap-3">
+          <div className="h-5 w-36 rounded bg-slate-200" />
+          <div className="h-6 w-20 rounded-full bg-slate-200" />
+        </div>
+
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="h-4 w-28 rounded bg-slate-200" />
+            <div className="h-4 w-28 rounded bg-slate-200" />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="h-4 w-20 rounded bg-slate-200" />
+            <div className="h-4 w-24 rounded bg-slate-200" />
+          </div>
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <div className="h-9 w-20 rounded-full bg-slate-200" />
+          <div className="h-9 w-20 rounded-full bg-slate-200" />
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+export const VMCardSkeleton = VMSkeletonCard;

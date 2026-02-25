@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { clsx } from "clsx";
 import { Card } from "../components/shared/Card";
 import { PageHeader } from "../components/shared/PageHeader";
-import { VMCard, type VMAction } from "../components/shared/VMCard";
+import { DashboardSkeletonCard } from "../components/shared/DashboardSkeletonCard";
 import { activityLogs } from "../data/activityLogs";
 import type { VM } from "../types/vm";
 import { useSummaryStats } from "../components/shared/useSummaryStats";
@@ -12,21 +13,28 @@ type FetchVmsOptions = {
   clearError?: boolean;
 };
 
-const POLL_INTERVAL_MS = 2000;
-const MAX_POLL_ATTEMPTS = 30;
+const SKELETON_CARD_COUNT = 4;
+const MIN_SKELETON_DISPLAY_MS = 1000;
 
-const getVmKey = (vm: Pick<VM, "name" | "resourceGroup">) => `${vm.resourceGroup}-${vm.name}`;
+const getPowerBadgeClass = (powerState: string) => {
+  const normalized = powerState.toLowerCase();
+  if (normalized.includes("running")) {
+    return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
+  }
+  return "bg-rose-100 text-rose-700 ring-1 ring-rose-200";
+};
 
 const DashboardPage = () => {
   const stats = useSummaryStats(activityLogs);
   const [vms, setVms] = useState<VM[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showEmptyState, setShowEmptyState] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [vmActionLoading, setVmActionLoading] = useState<Record<string, VMAction | null>>({});
-  const [vmActionError, setVmActionError] = useState<Record<string, string | null>>({});
 
-  const pollIntervalIdsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
-  const pollRequestInFlightRef = useRef<Record<string, boolean>>({});
+  const emptyStateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emptyStateDelayResolveRef = useRef<(() => void) | null>(null);
+  const loadingRequestIdRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
 
   const cards = useMemo(
     () => [
@@ -37,19 +45,24 @@ const DashboardPage = () => {
     [stats]
   );
 
-  const setVmLoadingState = useCallback((vmKey: string, value: VMAction | null) => {
-    setVmActionLoading((prev) => ({ ...prev, [vmKey]: value }));
-  }, []);
-
-  const setVmErrorState = useCallback((vmKey: string, value: string | null) => {
-    setVmActionError((prev) => ({ ...prev, [vmKey]: value }));
-  }, []);
-
   const fetchVms = useCallback(async (options: FetchVmsOptions = {}) => {
     const { signal, showLoading = true, clearError = true } = options;
+    const requestStartedAt = Date.now();
+    const requestId = showLoading ? ++loadingRequestIdRef.current : loadingRequestIdRef.current;
 
     if (showLoading) {
-      setLoading(true);
+      setIsLoading(true);
+      setShowEmptyState(false);
+
+      if (emptyStateTimeoutRef.current) {
+        clearTimeout(emptyStateTimeoutRef.current);
+        emptyStateTimeoutRef.current = null;
+      }
+
+      if (emptyStateDelayResolveRef.current) {
+        emptyStateDelayResolveRef.current();
+        emptyStateDelayResolveRef.current = null;
+      }
     }
 
     if (clearError) {
@@ -58,13 +71,47 @@ const DashboardPage = () => {
 
     try {
       const response = await fetch("http://localhost:5000/vms", { signal });
-
       if (!response.ok) {
         throw new Error(`Request failed with status ${response.status}`);
       }
 
       const data: VM[] = await response.json();
+
+      if (showLoading && requestId !== loadingRequestIdRef.current) {
+        return null;
+      }
+
       setVms(data);
+
+      if (showLoading) {
+        if (data.length > 0) {
+          setShowEmptyState(false);
+          setIsLoading(false);
+          return data;
+        }
+
+        const elapsed = Date.now() - requestStartedAt;
+        const delayMs = Math.max(0, MIN_SKELETON_DISPLAY_MS - elapsed);
+
+        if (delayMs > 0) {
+          await new Promise<void>((resolve) => {
+            emptyStateDelayResolveRef.current = resolve;
+            emptyStateTimeoutRef.current = setTimeout(() => {
+              emptyStateTimeoutRef.current = null;
+              emptyStateDelayResolveRef.current = null;
+              resolve();
+            }, delayMs);
+          });
+        }
+
+        if (!isMountedRef.current || requestId !== loadingRequestIdRef.current) {
+          return null;
+        }
+
+        setShowEmptyState(true);
+        setIsLoading(false);
+      }
+
       return data;
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -72,122 +119,39 @@ const DashboardPage = () => {
       }
 
       const message = err instanceof Error ? err.message : "Failed to fetch virtual machines.";
-
       if (clearError) {
         setError(message);
       }
 
+      if (showLoading && requestId === loadingRequestIdRef.current) {
+        setShowEmptyState(false);
+        setIsLoading(false);
+      }
+
       return null;
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
     }
   }, []);
-
-  const clearVmPoll = useCallback((vmKey: string) => {
-    const intervalId = pollIntervalIdsRef.current[vmKey];
-
-    if (intervalId) {
-      clearInterval(intervalId);
-      delete pollIntervalIdsRef.current[vmKey];
-    }
-
-    delete pollRequestInFlightRef.current[vmKey];
-  }, []);
-
-  const startVmStatePolling = useCallback(
-    (vmKey: string, initialPowerState: string) => {
-      clearVmPoll(vmKey);
-      const initialState = initialPowerState.toLowerCase();
-      let attempts = 0;
-
-      const checkForStateChange = async () => {
-        if (pollRequestInFlightRef.current[vmKey]) {
-          return;
-        }
-
-        pollRequestInFlightRef.current[vmKey] = true;
-        attempts += 1;
-
-        try {
-          const latestVms = await fetchVms({ showLoading: false, clearError: false });
-          const targetVm = latestVms?.find((vm) => getVmKey(vm) === vmKey);
-          const didStateChange = !!targetVm && targetVm.powerState.toLowerCase() !== initialState;
-
-          if (didStateChange) {
-            clearVmPoll(vmKey);
-            setVmLoadingState(vmKey, null);
-            return;
-          }
-
-          if (attempts >= MAX_POLL_ATTEMPTS) {
-            clearVmPoll(vmKey);
-            setVmLoadingState(vmKey, null);
-            setVmErrorState(vmKey, "Timed out waiting for VM status update. Please refresh.");
-          }
-        } finally {
-          delete pollRequestInFlightRef.current[vmKey];
-        }
-      };
-
-      void checkForStateChange();
-      pollIntervalIdsRef.current[vmKey] = setInterval(() => {
-        void checkForStateChange();
-      }, POLL_INTERVAL_MS);
-    },
-    [clearVmPoll, fetchVms, setVmErrorState, setVmLoadingState]
-  );
-
-  const handleVmAction = useCallback(
-    async (vm: VM, action: VMAction) => {
-      const vmKey = getVmKey(vm);
-      setVmLoadingState(vmKey, action);
-      setVmErrorState(vmKey, null);
-      clearVmPoll(vmKey);
-
-      try {
-        const endpoint = action === "start" ? "/vm/start" : "/vm/stop";
-        const response = await fetch(`http://localhost:5000${endpoint}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: vm.name,
-            resourceGroup: vm.resourceGroup,
-          }),
-        });
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => null);
-          const message =
-            payload && typeof payload.message === "string"
-              ? payload.message
-              : `Failed to ${action} VM`;
-          throw new Error(message);
-        }
-
-        startVmStatePolling(vmKey, vm.powerState);
-      } catch (actionError) {
-        const message =
-          actionError instanceof Error ? actionError.message : `Failed to ${action} VM`;
-        setVmErrorState(vmKey, message);
-        setVmLoadingState(vmKey, null);
-      }
-    },
-    [clearVmPoll, setVmErrorState, setVmLoadingState, startVmStatePolling]
-  );
 
   useEffect(() => {
+    isMountedRef.current = true;
     const controller = new AbortController();
     void fetchVms({ signal: controller.signal });
 
     return () => {
+      isMountedRef.current = false;
       controller.abort();
-      Object.keys(pollIntervalIdsRef.current).forEach((vmKey) => clearVmPoll(vmKey));
+
+      if (emptyStateTimeoutRef.current) {
+        clearTimeout(emptyStateTimeoutRef.current);
+        emptyStateTimeoutRef.current = null;
+      }
+
+      if (emptyStateDelayResolveRef.current) {
+        emptyStateDelayResolveRef.current();
+        emptyStateDelayResolveRef.current = null;
+      }
     };
-  }, [clearVmPoll, fetchVms]);
+  }, [fetchVms]);
 
   return (
     <div>
@@ -210,32 +174,51 @@ const DashboardPage = () => {
       <div className="mt-8">
         <h2 className="text-lg font-semibold text-slate-900">Azure Virtual Machines</h2>
 
-        {loading && <p className="mt-3 text-sm text-slate-500">Loading virtual machines...</p>}
-
         {error && (
           <p className="mt-3 text-sm text-red-600">Error loading virtual machines: {error}</p>
         )}
 
-        {!loading && !error && (
+        {!error && (
           <div className="mt-4 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {vms.length === 0 ? (
+            {isLoading ? (
+              Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+                <DashboardSkeletonCard key={`dashboard-vm-skeleton-${index}`} />
+              ))
+            ) : vms.length > 0 ? (
+              vms.map((vm) => (
+                <Card key={`${vm.resourceGroup}-${vm.name}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-base font-semibold text-slate-900">{vm.name}</h3>
+                    <span
+                      className={clsx(
+                        "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
+                        getPowerBadgeClass(vm.powerState)
+                      )}
+                    >
+                      {vm.powerState}
+                    </span>
+                  </div>
+
+                  <dl className="mt-4 space-y-2 text-sm text-slate-600">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="font-medium text-slate-500">Resource Group</dt>
+                      <dd className="text-right font-medium text-slate-700">{vm.resourceGroup}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="font-medium text-slate-500">Location</dt>
+                      <dd className="text-right font-medium text-slate-700">{vm.location}</dd>
+                    </div>
+                  </dl>
+                </Card>
+              ))
+            ) : showEmptyState ? (
               <Card>
                 <p className="text-sm text-slate-500">No virtual machines found.</p>
               </Card>
             ) : (
-              vms.map((vm) => {
-                const vmKey = getVmKey(vm);
-
-                return (
-                  <VMCard
-                    key={vmKey}
-                    vm={vm}
-                    onAction={handleVmAction}
-                    loadingAction={vmActionLoading[vmKey] ?? null}
-                    actionError={vmActionError[vmKey] ?? null}
-                  />
-                );
-              })
+              Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+                <DashboardSkeletonCard key={`dashboard-vm-delayed-empty-${index}`} />
+              ))
             )}
           </div>
         )}
@@ -245,8 +228,8 @@ const DashboardPage = () => {
         <Card>
           <h3 className="text-lg font-semibold text-slate-900">Operational Notes</h3>
           <p className="mt-3 text-sm text-slate-500">
-            Keep production workloads within approved schedules and validate off-hour
-            automation to control cost. Review the scheduler weekly for conflicts.
+            Keep production workloads within approved schedules and validate off-hour automation to
+            control cost. Review the scheduler weekly for conflicts.
           </p>
         </Card>
         <Card>

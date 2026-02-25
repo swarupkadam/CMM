@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "../components/shared/PageHeader";
 import { Card } from "../components/shared/Card";
-import { VMCard, type VMAction } from "../components/shared/VMCard";
+import { VMCard, VMSkeletonCard, type VMAction } from "../components/shared/VMCard";
 import { CreateEnvironmentModal } from "../components/shared/CreateEnvironmentModal";
 import { ToastContainer, type Toast } from "../components/shared/Toast";
 import type { VM } from "../types/vm";
@@ -14,12 +14,15 @@ type FetchVmsOptions = {
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_ATTEMPTS = 30;
+const SKELETON_CARD_COUNT = 4;
+const MIN_SKELETON_DISPLAY_MS = 1000;
 
 const getVmKey = (vm: Pick<VM, "name" | "resourceGroup">) => `${vm.resourceGroup}-${vm.name}`;
 
 const VirtualMachinesPage = () => {
   const [vms, setVms] = useState<VM[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showEmptyState, setShowEmptyState] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [vmActionLoading, setVmActionLoading] = useState<Record<string, VMAction | null>>({});
   const [vmActionError, setVmActionError] = useState<Record<string, string | null>>({});
@@ -28,6 +31,10 @@ const VirtualMachinesPage = () => {
 
   const pollIntervalIdsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const pollRequestInFlightRef = useRef<Record<string, boolean>>({});
+  const emptyStateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emptyStateDelayResolveRef = useRef<(() => void) | null>(null);
+  const loadingRequestIdRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
 
   const setVmLoadingState = useCallback((vmKey: string, value: VMAction | null) => {
     setVmActionLoading((prev) => ({ ...prev, [vmKey]: value }));
@@ -54,9 +61,20 @@ const VirtualMachinesPage = () => {
 
   const fetchVms = useCallback(async (options: FetchVmsOptions = {}) => {
     const { signal, showLoading = true, clearError = true } = options;
+    const requestStartedAt = Date.now();
+    const requestId = showLoading ? ++loadingRequestIdRef.current : loadingRequestIdRef.current;
 
     if (showLoading) {
-      setLoading(true);
+      setIsLoading(true);
+      setShowEmptyState(false);
+      if (emptyStateTimeoutRef.current) {
+        clearTimeout(emptyStateTimeoutRef.current);
+        emptyStateTimeoutRef.current = null;
+      }
+      if (emptyStateDelayResolveRef.current) {
+        emptyStateDelayResolveRef.current();
+        emptyStateDelayResolveRef.current = null;
+      }
     }
 
     if (clearError) {
@@ -71,7 +89,42 @@ const VirtualMachinesPage = () => {
       }
 
       const data: VM[] = await response.json();
+
+      if (showLoading && requestId !== loadingRequestIdRef.current) {
+        return null;
+      }
+
       setVms(data);
+
+      if (showLoading) {
+        if (data.length > 0) {
+          setShowEmptyState(false);
+          setIsLoading(false);
+          return data;
+        }
+
+        const elapsed = Date.now() - requestStartedAt;
+        const delayMs = Math.max(0, MIN_SKELETON_DISPLAY_MS - elapsed);
+
+        if (delayMs > 0) {
+          await new Promise<void>((resolve) => {
+            emptyStateDelayResolveRef.current = resolve;
+            emptyStateTimeoutRef.current = setTimeout(() => {
+              emptyStateTimeoutRef.current = null;
+              emptyStateDelayResolveRef.current = null;
+              resolve();
+            }, delayMs);
+          });
+        }
+
+        if (!isMountedRef.current || requestId !== loadingRequestIdRef.current) {
+          return null;
+        }
+
+        setShowEmptyState(true);
+        setIsLoading(false);
+      }
+
       return data;
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -84,11 +137,12 @@ const VirtualMachinesPage = () => {
         setError(message);
       }
 
-      return null;
-    } finally {
-      if (showLoading) {
-        setLoading(false);
+      if (showLoading && requestId === loadingRequestIdRef.current) {
+        setShowEmptyState(false);
+        setIsLoading(false);
       }
+
+      return null;
     }
   }, []);
 
@@ -187,11 +241,21 @@ const VirtualMachinesPage = () => {
   );
 
   useEffect(() => {
+    isMountedRef.current = true;
     const controller = new AbortController();
     void fetchVms({ signal: controller.signal });
 
     return () => {
+      isMountedRef.current = false;
       controller.abort();
+      if (emptyStateTimeoutRef.current) {
+        clearTimeout(emptyStateTimeoutRef.current);
+        emptyStateTimeoutRef.current = null;
+      }
+      if (emptyStateDelayResolveRef.current) {
+        emptyStateDelayResolveRef.current();
+        emptyStateDelayResolveRef.current = null;
+      }
       Object.keys(pollIntervalIdsRef.current).forEach((vmKey) => clearVmPoll(vmKey));
     };
   }, [clearVmPoll, fetchVms]);
@@ -217,17 +281,15 @@ const VirtualMachinesPage = () => {
         }
       />
 
-      {loading && <p className="text-sm text-slate-500">Loading virtual machines...</p>}
-
       {error && <p className="text-sm text-rose-600">Error loading virtual machines: {error}</p>}
 
-      {!loading && !error && (
+      {!error && (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {vms.length === 0 ? (
-            <Card>
-              <p className="text-sm text-slate-500">No virtual machines found.</p>
-            </Card>
-          ) : (
+          {isLoading ? (
+            Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+              <VMSkeletonCard key={`vm-skeleton-${index}`} />
+            ))
+          ) : vms.length > 0 ? (
             vms.map((vm) => {
               const vmKey = getVmKey(vm);
 
@@ -241,6 +303,14 @@ const VirtualMachinesPage = () => {
                 />
               );
             })
+          ) : showEmptyState ? (
+            <Card>
+              <p className="text-sm text-slate-500">No virtual machines found.</p>
+            </Card>
+          ) : (
+            Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+              <VMSkeletonCard key={`vm-delayed-empty-${index}`} />
+            ))
           )}
         </div>
       )}
