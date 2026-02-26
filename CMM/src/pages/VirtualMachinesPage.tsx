@@ -266,7 +266,7 @@ const VirtualMachinesPage = () => {
   }, [fetchVms, showSuccessToast]);
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Virtual Machines"
         subtitle="Manage VM status and view your Azure inventory in real time."
@@ -274,7 +274,7 @@ const VirtualMachinesPage = () => {
           <button
             type="button"
             onClick={() => setIsCreateEnvironmentOpen(true)}
-            className="rounded-xl border border-[#19beaa] bg-[#19beaa] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
+            className="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-teal-700"
           >
             Create Environment
           </button>
@@ -305,7 +305,7 @@ const VirtualMachinesPage = () => {
             })
           ) : showEmptyState ? (
             <Card>
-              <p className="text-sm text-slate-500">No virtual machines found.</p>
+              <p className="text-sm text-gray-500">No virtual machines found.</p>
             </Card>
           ) : (
             Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (

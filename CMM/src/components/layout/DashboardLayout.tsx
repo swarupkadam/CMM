@@ -18,7 +18,7 @@ const SidebarLink = ({ to, children }: { to: string; children: ReactNode }) => (
     end={to === "/"}
     className={({ isActive }) =>
       clsx(
-        "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition",
+        "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition-colors duration-200",
         isActive
           ? "bg-blue-50 text-blue-700"
           : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -39,7 +39,7 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-100 text-gray-800">
       <div className="flex">
         <aside className="hidden min-h-screen w-64 flex-col border-r border-slate-100 bg-white px-6 py-8 md:flex">
           <div className="mb-8 border-b border-slate-100 py-6">
@@ -56,17 +56,21 @@ const DashboardLayout = () => {
             ))}
           </nav>
         </aside>
-        <div className="flex min-h-screen flex-1 flex-col bg-slate-50">
-          <header className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4 shadow-sm">
-            <div className="flex items-center gap-4 md:hidden">
-              <span className="text-sm font-semibold text-slate-600">Menu</span>
-            </div>
-            <div className="ml-auto">
-              <UserMenu onLogout={handleLogout} />
+        <div className="flex min-h-screen flex-1 flex-col bg-slate-100">
+          <header className="border-b border-gray-200 bg-white shadow-sm">
+            <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 text-gray-700">
+              <div className="flex items-center gap-4 md:hidden">
+                <span className="text-sm font-semibold text-gray-700">Menu</span>
+              </div>
+              <div className="ml-auto">
+                <UserMenu onLogout={handleLogout} />
+              </div>
             </div>
           </header>
-          <main className="flex-1 px-6 py-8">
-            <Outlet />
+          <main className="flex-1 p-6">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>

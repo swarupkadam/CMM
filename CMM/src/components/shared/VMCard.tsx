@@ -47,7 +47,7 @@ export const VMCard = ({ vm, onAction, loadingAction = null, actionError = null 
   return (
     <Card>
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-base font-semibold text-slate-900">{vm.name}</h3>
+        <h3 className="text-base font-semibold text-gray-800">{vm.name}</h3>
         <span
           className={clsx(
             "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
@@ -58,14 +58,14 @@ export const VMCard = ({ vm, onAction, loadingAction = null, actionError = null 
         </span>
       </div>
 
-      <dl className="mt-4 space-y-2 text-sm text-slate-600">
+      <dl className="mt-4 space-y-2 text-sm text-gray-600">
         <div className="flex items-center justify-between gap-3">
-          <dt className="font-medium text-slate-500">Resource Group</dt>
-          <dd className="text-right font-medium text-slate-700">{vm.resourceGroup}</dd>
+          <dt className="font-medium text-gray-500">Resource Group</dt>
+          <dd className="text-right font-medium text-gray-600">{vm.resourceGroup}</dd>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <dt className="font-medium text-slate-500">Location</dt>
-          <dd className="text-right font-medium text-slate-700">{vm.location}</dd>
+          <dt className="font-medium text-gray-500">Location</dt>
+          <dd className="text-right font-medium text-gray-600">{vm.location}</dd>
         </div>
       </dl>
 
@@ -75,8 +75,7 @@ export const VMCard = ({ vm, onAction, loadingAction = null, actionError = null 
           onClick={() => onAction(vm, "start")}
           disabled={isBusy || isRunning}
           className={clsx(
-            "rounded-full px-4 py-2 text-xs font-semibold text-white transition",
-            "bg-emerald-600 hover:bg-emerald-700",
+            "rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white transition-colors duration-200 hover:bg-teal-700",
             (isBusy || isRunning) && "cursor-not-allowed opacity-50"
           )}
         >
@@ -95,8 +94,7 @@ export const VMCard = ({ vm, onAction, loadingAction = null, actionError = null 
           onClick={() => onAction(vm, "stop")}
           disabled={isBusy || isStopped}
           className={clsx(
-            "rounded-full px-4 py-2 text-xs font-semibold text-white transition",
-            "bg-rose-600 hover:bg-rose-700",
+            "rounded-lg bg-rose-500 px-4 py-2 text-xs font-semibold text-white transition-colors duration-200 hover:bg-rose-600",
             (isBusy || isStopped) && "cursor-not-allowed opacity-50"
           )}
         >
@@ -121,24 +119,24 @@ export const VMSkeletonCard = () => {
     <Card>
       <div className="animate-pulse">
         <div className="flex items-start justify-between gap-3">
-          <div className="h-5 w-36 rounded bg-slate-200" />
-          <div className="h-6 w-20 rounded-full bg-slate-200" />
+          <div className="h-5 w-36 rounded bg-gray-200" />
+          <div className="h-6 w-20 rounded-full bg-gray-200" />
         </div>
 
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <div className="h-4 w-28 rounded bg-slate-200" />
-            <div className="h-4 w-28 rounded bg-slate-200" />
+            <div className="h-4 w-28 rounded bg-gray-200" />
+            <div className="h-4 w-28 rounded bg-gray-200" />
           </div>
           <div className="flex items-center justify-between gap-3">
-            <div className="h-4 w-20 rounded bg-slate-200" />
-            <div className="h-4 w-24 rounded bg-slate-200" />
+            <div className="h-4 w-20 rounded bg-gray-200" />
+            <div className="h-4 w-24 rounded bg-gray-200" />
           </div>
         </div>
 
         <div className="mt-4 flex gap-2">
-          <div className="h-9 w-20 rounded-full bg-slate-200" />
-          <div className="h-9 w-20 rounded-full bg-slate-200" />
+          <div className="h-9 w-20 rounded-lg bg-gray-200" />
+          <div className="h-9 w-20 rounded-lg bg-gray-200" />
         </div>
       </div>
     </Card>

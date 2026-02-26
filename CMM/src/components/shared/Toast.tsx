@@ -34,12 +34,12 @@ export const ToastContainer = ({
             "w-72 rounded-2xl border px-4 py-3 shadow-lg",
             toast.variant === "success"
               ? "border-emerald-200 bg-emerald-50"
-              : "border-slate-200 bg-white"
+              : "border-gray-200 bg-white"
           )}
         >
-          <p className="text-sm font-semibold text-slate-900">{toast.title}</p>
+          <p className="text-sm font-semibold text-gray-800">{toast.title}</p>
           {toast.description && (
-            <p className="mt-1 text-xs text-slate-500">{toast.description}</p>
+            <p className="mt-1 text-xs text-gray-500">{toast.description}</p>
           )}
         </div>
       ))}

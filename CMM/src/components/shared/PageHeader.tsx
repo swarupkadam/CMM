@@ -9,10 +9,10 @@ export const PageHeader = ({
   subtitle?: string;
   actions?: ReactNode;
 }) => (
-  <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+  <div className="flex flex-wrap items-center justify-between gap-4">
     <div>
-      <h2 className="text-2xl font-semibold text-slate-900">{title}</h2>
-      {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
+      <h2 className="text-2xl font-semibold text-gray-800">{title}</h2>
+      {subtitle && <p className="mt-1 text-sm text-gray-600">{subtitle}</p>}
     </div>
     {actions}
   </div>

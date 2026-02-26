@@ -91,16 +91,16 @@ export const CreateEnvironmentModal = ({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-7">
-        <h3 className="text-xl font-semibold text-slate-900">Create New Environment</h3>
+      <div className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl sm:p-7">
+        <h3 className="text-xl font-semibold text-gray-800">Create New Environment</h3>
 
         <div className="mt-6 grid gap-5">
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Template Type</span>
+            <span className="mb-2 block text-sm font-medium text-gray-600">Template Type</span>
             <select
               value={templateType}
               onChange={(event) => setTemplateType(event.target.value as TemplateType)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition-colors duration-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
             >
               <option value="dev">{TEMPLATE_LABELS.dev}</option>
               <option value="qa" disabled>
@@ -113,38 +113,38 @@ export const CreateEnvironmentModal = ({
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Project Name</span>
+            <span className="mb-2 block text-sm font-medium text-gray-600">Project Name</span>
             <input
               type="text"
               value={projectName}
               onChange={(event) => setProjectName(event.target.value)}
               placeholder="e.g., billing"
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition-colors duration-200 placeholder:text-gray-500 focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
             />
           </label>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
               Configuration Preview
             </p>
-            <div className="mt-3 space-y-1.5 text-sm text-slate-700">
+            <div className="mt-3 space-y-1.5 text-sm text-gray-600">
               <p>
-                <span className="font-medium text-slate-900">Template:</span> Dev
+                <span className="font-medium text-gray-800">Template:</span> Dev
               </p>
               <p>
-                <span className="font-medium text-slate-900">VM Size:</span> Standard_B2ats_v2
+                <span className="font-medium text-gray-800">VM Size:</span> Standard_B2ats_v2
               </p>
               <p>
-                <span className="font-medium text-slate-900">Region:</span> centralindia
+                <span className="font-medium text-gray-800">Region:</span> centralindia
               </p>
               <p>
-                <span className="font-medium text-slate-900">Public IP:</span> Enabled
+                <span className="font-medium text-gray-800">Public IP:</span> Enabled
               </p>
               <div className="pt-1">
-                <p className="font-medium text-slate-900">Tags:</p>
-                <p className="pl-3 text-slate-600">- environment=dev</p>
-                <p className="pl-3 text-slate-600">- project={normalizedProjectName}</p>
-                <p className="pl-3 text-slate-600">- owner=internal-platform</p>
+                <p className="font-medium text-gray-800">Tags:</p>
+                <p className="pl-3 text-gray-600">- environment=dev</p>
+                <p className="pl-3 text-gray-600">- project={normalizedProjectName}</p>
+                <p className="pl-3 text-gray-600">- owner=internal-platform</p>
               </div>
             </div>
           </div>
@@ -156,7 +156,7 @@ export const CreateEnvironmentModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-gray-50"
           >
             Cancel
           </button>
@@ -164,7 +164,7 @@ export const CreateEnvironmentModal = ({
             type="button"
             onClick={handleCreate}
             disabled={isCreating}
-            className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isCreating ? (
               <>

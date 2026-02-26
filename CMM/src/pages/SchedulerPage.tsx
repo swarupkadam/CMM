@@ -85,20 +85,20 @@ const SchedulerPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Scheduler"
         subtitle="Create automation schedules for start and stop actions."
       />
       <Card>
         <form className="grid gap-6 md:grid-cols-2" onSubmit={handleSubmit}>
-          <label className="space-y-2 text-sm font-semibold text-slate-600">
+          <label className="space-y-2 text-sm font-semibold text-gray-600">
             Select VM
             <select
               value={vmId}
               onChange={(event) => setVmId(event.target.value)}
               disabled={loadingVms || !!vmError || vmOptions.length === 0}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 disabled:cursor-not-allowed disabled:bg-gray-100"
             >
               {vmOptions.map((vm) => (
                 <option key={vm.id} value={vm.id}>
@@ -106,33 +106,33 @@ const SchedulerPage = () => {
                 </option>
               ))}
             </select>
-            {loadingVms && <p className="text-xs font-normal text-slate-500">Loading Azure VMs...</p>}
+            {loadingVms && <p className="text-xs font-normal text-gray-500">Loading Azure VMs...</p>}
             {vmError && <p className="text-xs font-normal text-rose-600">Failed to load VMs: {vmError}</p>}
             {!loadingVms && !vmError && vmOptions.length === 0 && (
-              <p className="text-xs font-normal text-slate-500">No Azure VMs available.</p>
+              <p className="text-xs font-normal text-gray-500">No Azure VMs available.</p>
             )}
           </label>
-          <label className="space-y-2 text-sm font-semibold text-slate-600">
+          <label className="space-y-2 text-sm font-semibold text-gray-600">
             Action
             <select
               value={action}
               onChange={(event) => setAction(event.target.value as "Start" | "Stop")}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600"
             >
               <option value="Start">Start</option>
               <option value="Stop">Stop</option>
             </select>
           </label>
-          <label className="space-y-2 text-sm font-semibold text-slate-600">
+          <label className="space-y-2 text-sm font-semibold text-gray-600">
             Time
             <input
               type="time"
               value={time}
               onChange={(event) => setTime(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600"
             />
           </label>
-          <div className="space-y-2 text-sm font-semibold text-slate-600">
+          <div className="space-y-2 text-sm font-semibold text-gray-600">
             Days of Week
             <div className="flex flex-wrap gap-2">
               {weekdays.map((day) => (
@@ -142,8 +142,8 @@ const SchedulerPage = () => {
                   onClick={() => toggleDay(day)}
                   className={
                     days.includes(day)
-                      ? "rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
-                      : "rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500"
+                      ? "rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white transition-colors duration-200 hover:bg-teal-700"
+                      : "rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-500 transition-colors duration-200 hover:border-gray-300 hover:text-gray-600"
                   }
                 >
                   {day}
@@ -155,7 +155,7 @@ const SchedulerPage = () => {
             <button
               type="submit"
               disabled={loadingVms || !!vmError || vmOptions.length === 0}
-              className="rounded-full bg-slate-900 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg bg-teal-600 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-colors duration-200 hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Save Schedule
             </button>
@@ -164,23 +164,23 @@ const SchedulerPage = () => {
         </form>
       </Card>
       <Card>
-        <h3 className="text-lg font-semibold text-slate-900">Upcoming Schedules</h3>
+        <h3 className="text-lg font-semibold text-gray-800">Upcoming Schedules</h3>
         <div className="mt-4 space-y-3">
-          {schedules.length === 0 && <p className="text-sm text-slate-400">No schedules yet.</p>}
+          {schedules.length === 0 && <p className="text-sm text-gray-500">No schedules yet.</p>}
           {schedules.map((schedule) => (
             <div
               key={schedule.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+              className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
             >
               <div>
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold text-gray-800">
                   {schedule.vmName} - {schedule.action}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-gray-500">
                   {schedule.days.join(", ")} at {schedule.time}
                 </p>
               </div>
-              <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+              <span className="rounded-lg bg-teal-600 px-3 py-1 text-xs font-semibold text-white">
                 Active
               </span>
             </div>

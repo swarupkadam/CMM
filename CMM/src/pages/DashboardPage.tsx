@@ -154,7 +154,7 @@ const DashboardPage = () => {
   }, [fetchVms]);
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Automation Overview"
         subtitle="Monitor VM automation status and recent activity."
@@ -163,19 +163,19 @@ const DashboardPage = () => {
       <div className="grid gap-6 md:grid-cols-3">
         {cards.map((card) => (
           <Card key={card.label}>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-500">
               {card.label}
             </p>
-            <p className="mt-4 text-3xl font-semibold text-slate-900">{card.value}</p>
+            <p className="mt-4 text-3xl font-semibold text-gray-800">{card.value}</p>
           </Card>
         ))}
       </div>
 
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold text-slate-900">Azure Virtual Machines</h2>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-800">Azure Virtual Machines</h2>
 
         {error && (
-          <p className="mt-3 text-sm text-red-600">Error loading virtual machines: {error}</p>
+          <p className="mt-3 text-sm text-rose-600">Error loading virtual machines: {error}</p>
         )}
 
         {!error && (
@@ -188,7 +188,7 @@ const DashboardPage = () => {
               vms.map((vm) => (
                 <Card key={`${vm.resourceGroup}-${vm.name}`}>
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-base font-semibold text-slate-900">{vm.name}</h3>
+                    <h3 className="text-base font-semibold text-gray-800">{vm.name}</h3>
                     <span
                       className={clsx(
                         "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
@@ -199,21 +199,21 @@ const DashboardPage = () => {
                     </span>
                   </div>
 
-                  <dl className="mt-4 space-y-2 text-sm text-slate-600">
+                  <dl className="mt-4 space-y-2 text-sm text-gray-600">
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="font-medium text-slate-500">Resource Group</dt>
-                      <dd className="text-right font-medium text-slate-700">{vm.resourceGroup}</dd>
+                      <dt className="font-medium text-gray-500">Resource Group</dt>
+                      <dd className="text-right font-medium text-gray-600">{vm.resourceGroup}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="font-medium text-slate-500">Location</dt>
-                      <dd className="text-right font-medium text-slate-700">{vm.location}</dd>
+                      <dt className="font-medium text-gray-500">Location</dt>
+                      <dd className="text-right font-medium text-gray-600">{vm.location}</dd>
                     </div>
                   </dl>
                 </Card>
               ))
             ) : showEmptyState ? (
               <Card>
-                <p className="text-sm text-slate-500">No virtual machines found.</p>
+                <p className="text-sm text-gray-500">No virtual machines found.</p>
               </Card>
             ) : (
               Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
@@ -224,17 +224,17 @@ const DashboardPage = () => {
         )}
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <h3 className="text-lg font-semibold text-slate-900">Operational Notes</h3>
-          <p className="mt-3 text-sm text-slate-500">
+          <h3 className="text-lg font-semibold text-gray-800">Operational Notes</h3>
+          <p className="mt-3 text-sm text-gray-500">
             Keep production workloads within approved schedules and validate off-hour automation to
             control cost. Review the scheduler weekly for conflicts.
           </p>
         </Card>
         <Card>
-          <h3 className="text-lg font-semibold text-slate-900">Next Maintenance Window</h3>
-          <p className="mt-3 text-sm text-slate-500">
+          <h3 className="text-lg font-semibold text-gray-800">Next Maintenance Window</h3>
+          <p className="mt-3 text-sm text-gray-500">
             Friday 22:00 UTC - running automated restarts across production nodes.
           </p>
         </Card>
